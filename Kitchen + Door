@@ -1,0 +1,101 @@
+#include <Arduino.h>
+#define MINUTE 60000
+#define SECOND 1000 
+
+int rPin = 7; // fire
+int yPin = 3;// gas
+int gPin = 4;// safty zone
+int bPin = 2; // danger zone 
+int piezo = 5;// buzer
+int flam = 0; // fie sensor
+int ledPin = 12;  //  room led
+int pirPin = 13;  // PIR sensor
+int lastPirVal = LOW;
+int pirVal;
+unsigned long myTime;
+char printBuffer[128]; 
+
+void setup()
+{
+  pinMode(A1, INPUT);       // gas sensor
+  pinMode(A0, INPUT);       // fire sensor
+  pinMode(pirPin, INPUT);   // PIR sensor
+  pinMode(ledPin, OUTPUT);  //  room led
+  pinMode(rPin, OUTPUT);
+  pinMode(yPin, OUTPUT);
+  pinMode(bPin, OUTPUT);
+  pinMode(gPin, OUTPUT);
+  pinMode(piezo, OUTPUT);
+  pinMode(7, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  pirVal = digitalRead(pirPin);  // read current input value
+  int gasVal = analogRead(A1);
+  Serial.println(gasVal);
+  flam = analogRead(A0);
+  Serial.println(flam);
+  delay(100);
+
+  if (pirVal == HIGH) 
+  {
+    digitalWrite(ledPin, HIGH);  // if there was NO movement before
+    if (lastPirVal == LOW) 
+    { 
+      myTime = millis();
+      sprintf(printBuffer, "%lu min %lu sec: Motion detected!", myTime/MINUTE, myTime%MINUTE/SECOND); 
+      Serial.println(printBuffer);
+      lastPirVal = HIGH;
+    }
+  } 
+  else 
+  { 
+    digitalWrite(ledPin, LOW); // no movement detected
+    if (lastPirVal == HIGH)
+    { 
+      myTime = millis();// if there was a movement before
+      sprintf(printBuffer, "%lu min %lu sec: Motion ended!", myTime/MINUTE, myTime%MINUTE/SECOND); 
+      Serial.println(printBuffer);
+      lastPirVal = LOW;
+    }
+  }
+
+  if(gasVal <500 && flam > 800) // save zone
+  {
+    digitalWrite(gPin, HIGH);
+    digitalWrite(yPin, LOW);
+    digitalWrite(rPin, LOW);
+    digitalWrite(bPin, LOW);
+    digitalWrite(piezo, LOW);
+  }
+  else if(gasVal >550 && gasVal <650) // gas
+  {
+    digitalWrite(yPin, HIGH);
+    digitalWrite(gPin, LOW);
+    digitalWrite(rPin, LOW);
+    digitalWrite(bPin, LOW);
+    tone(piezo, 800, 200);
+    digitalWrite(piezo, LOW);
+    delay(100);
+    tone(piezo, 600, 200);
+    delay(100);
+  }
+  else if (flam < 910 && gasVal > 278 ) // fire
+  {
+    digitalWrite(rPin, HIGH);
+    digitalWrite(bPin, LOW);
+    digitalWrite(gPin, LOW);
+    digitalWrite(yPin, LOW);
+    tone(piezo, 250, 1000);
+  }
+  else if (gasVal >= 650 && flam > 910) // danger
+  {
+    digitalWrite(bPin, HIGH);
+    digitalWrite(gPin, LOW);
+    digitalWrite(yPin, LOW);
+    digitalWrite(rPin, LOW);
+    tone(piezo, 180, 100);
+  }
+}
